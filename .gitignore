@@ -1,0 +1,31 @@
+# Build products
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+G4SPECT
+
+# Simulation and visualization outputs
+output/
+geometry_exports/
+*.root
+*.wrl
+*.obj
+*.mtl
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local/editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Manual backup files kept outside version control
+*.bak
+*.bak_*
+*.backup_*
+*.backup_*

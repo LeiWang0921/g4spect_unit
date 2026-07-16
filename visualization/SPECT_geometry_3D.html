@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPECT SiPM + LSO Unit Geometry</title>
+<style>
+:root { color-scheme: dark; --panel:#121922; --line:#2c3948; --muted:#96a6b7; --accent:#4ca7d8; }
+* { box-sizing:border-box; }
+html,body { width:100%; height:100%; margin:0; overflow:hidden; background:#080d13; color:#e9f0f7; font-family:Inter,Segoe UI,Arial,sans-serif; }
+#app { display:grid; grid-template-columns:360px 1fr; height:100%; }
+#sidebar { background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:18px; }
+#plot { position:relative; width:100%; height:100%; min-width:0; background:radial-gradient(circle at 52% 42%, #101923 0%, #080d13 64%); }
+canvas { display:block; width:100%; height:100%; }
+h1 { margin:0 0 5px; font-size:20px; }
+h2 { margin:19px 0 8px; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:#afc2d4; }
+p { margin:6px 0; line-height:1.45; color:var(--muted); font-size:12px; }
+.badge { display:inline-block; margin:5px 4px 0 0; padding:3px 7px; border:1px solid var(--line); border-radius:999px; font-size:11px; color:#bfd0df; }
+.buttons { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+button,input { font:inherit; }
+button { padding:8px 9px; color:#dce8f2; background:#1b2632; border:1px solid #344657; border-radius:6px; cursor:pointer; }
+button:hover { background:#243343; }
+.component { display:grid; grid-template-columns:19px 1fr 92px; gap:7px; align-items:center; padding:7px 0; border-bottom:1px solid #202c38; }
+.component label { cursor:pointer; min-width:0; }
+.component strong { display:block; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.component small { display:block; color:#8293a4; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.component input[type=range] { width:92px; }
+.swatch { display:inline-block; width:9px; height:9px; margin-right:5px; border-radius:2px; }
+.note { padding:9px; background:#0d141c; border-left:3px solid var(--accent); }
+#selection { min-height:35px; padding:9px; margin-top:8px; background:#0d141c; border:1px solid #263543; border-radius:6px; color:#aebdca; font-size:11px; line-height:1.4; }
+#hud { position:absolute; right:14px; bottom:12px; padding:8px 10px; border:1px solid #263543; background:rgba(13,20,28,.82); color:#aebdca; font-size:11px; border-radius:6px; pointer-events:none; }
+@media (max-width:850px) {
+  #app { grid-template-columns:1fr; grid-template-rows:42% 58%; }
+  #sidebar { border-right:0; border-bottom:1px solid var(--line); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>SPECT SiPM + LSO Unit</h1>
+    <p>Minimal Geant4 geometry: Tc-99m source, Pb parallel-hole collimator, LSO crystal, optical gel, and SiPM slab.</p>
+    <span class="badge">gamma: 140.5 keV</span>
+    <span class="badge">LSO sensitive volume</span>
+    <span class="badge">tree_chroma output</span>
+    <span class="badge">collimator holes: air/world</span>
+
+    <h2>View</h2>
+    <div class="buttons">
+      <button id="reset">Reset</button>
+      <button id="front">Front</button>
+      <button id="side">Side</button>
+      <button id="top">Top</button>
+    </div>
+
+    <h2>Components</h2>
+    <div id="components"></div>
+
+    <h2>Selection</h2>
+    <div id="selection">Hover a component row to highlight it.</div>
+
+    <h2>Notes</h2>
+    <p class="note">The collimator visualization mirrors the Geant4 model: Pb frame and septa are drawn, while the square holes are air/world and intentionally left unpainted. It is a gamma selector, not an optical reflector. Optical photon handling will be done in Chroma later.</p>
+  </aside>
+  <main id="plot">
+    <canvas id="canvas"></canvas>
+    <div id="hud">Drag to rotate. Wheel to zoom.</div>
+  </main>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const selection = document.getElementById('selection');
+
+const geometry = {
+  collimator: {
+    xy: 32,
+    length: 25,
+    halfGrid: 4,
+    pitch: 3.2,
+    hole: 2.4
+  }
+};
+
+const components = [
+  {id:'source', name:'Tc-99m point source', note:'140.5 keV gamma source at z = -120 mm', color:'#f0d36a', visible:true, alpha:1, type:'sphere', center:[0,0,-120], radius:4},
+  {id:'beam', name:'Accepted gamma direction', note:'Directed smoke-test rays toward collimator holes', color:'#f7e38a', visible:true, alpha:.8, type:'rays'},
+  {id:'collimator', name:'Pb parallel-hole collimator', note:'32 x 32 x 25 mm Pb; 9 x 9 air/world square holes, 2.4 mm aperture, 3.2 mm pitch', color:'#7f8b96', visible:true, alpha:.92, type:'collimator', center:[0,0,-19], size:[32,32,25]},
+  {id:'lso', name:'LSO crystal', note:'32 x 32 x 10 mm sensitive detector', color:'#39aee2', visible:true, alpha:.64, type:'box', center:[0,0,0], size:[32,32,10]},
+  {id:'gel', name:'Optical gel', note:'32 x 32 x 0.5 mm optical coupling layer', color:'#e7f5ff', visible:true, alpha:.42, type:'box', center:[0,0,5.25], size:[32,32,.5]},
+  {id:'sipm', name:'SiPM slab', note:'32 x 32 x 1 mm silicon readout plane', color:'#1d2229', visible:true, alpha:1, type:'box', center:[0,0,6], size:[32,32,1]}
+];
+
+let highlighted = null;
+let yaw = -0.62;
+let pitch = 0.54;
+let zoom = 5.1;
+let dragging = false;
+let last = [0,0];
+
+function hexToRgb(hex) {
+  const value = hex.replace('#','');
+  return [parseInt(value.slice(0,2),16), parseInt(value.slice(2,4),16), parseInt(value.slice(4,6),16)];
+}
+
+function rgba(hex, alpha) {
+  const [r,g,b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function shade(hex, factor, alpha) {
+  const [r,g,b] = hexToRgb(hex);
+  const f = Math.max(0, Math.min(1.8, factor));
+  return `rgba(${Math.min(255,r*f)|0},${Math.min(255,g*f)|0},${Math.min(255,b*f)|0},${alpha})`;
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width*dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height*dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+
+function rotatePoint(p) {
+  const [x,y,z] = p;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const x1 = cy*x + sy*z;
+  const z1 = -sy*x + cy*z;
+  const y1 = cp*y - sp*z1;
+  const z2 = sp*y + cp*z1;
+  return [x1, y1, z2];
+}
+
+function project(p) {
+  const [x,y,z] = rotatePoint(p);
+  const rect = canvas.getBoundingClientRect();
+  return [rect.width/2 + x*zoom, rect.height/2 - y*zoom + 20, z];
+}
+
+function boxVertices(c, s) {
+  const [cx,cy,cz] = c, [sx,sy,sz] = s.map(v => v/2);
+  return [
+    [cx-sx,cy-sy,cz-sz], [cx+sx,cy-sy,cz-sz], [cx+sx,cy+sy,cz-sz], [cx-sx,cy+sy,cz-sz],
+    [cx-sx,cy-sy,cz+sz], [cx+sx,cy-sy,cz+sz], [cx+sx,cy+sy,cz+sz], [cx-sx,cy+sy,cz+sz]
+  ];
+}
+
+const faces = [
+  [0,1,2,3, .68], [4,5,6,7, 1.05], [0,1,5,4, .82],
+  [1,2,6,5, .94], [2,3,7,6, .76], [3,0,4,7, .88]
+];
+
+function drawBox(comp) {
+  const verts = boxVertices(comp.center, comp.size).map(project);
+  const polys = faces.map(face => {
+    const pts = face.slice(0,4).map(i => verts[i]);
+    const depth = pts.reduce((sum,p) => sum+p[2], 0)/4;
+    return {pts, depth, shade:face[4]};
+  }).sort((a,b) => a.depth-b.depth);
+
+  for (const poly of polys) {
+    ctx.beginPath();
+    poly.pts.forEach((p,i) => i ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]));
+    ctx.closePath();
+    const alpha = comp.id === highlighted ? Math.min(1, comp.alpha + .22) : comp.alpha;
+    ctx.fillStyle = shade(comp.color, poly.shade, alpha);
+    ctx.strokeStyle = comp.id === highlighted ? '#ffffff' : 'rgba(205,225,240,.28)';
+    ctx.lineWidth = comp.id === highlighted ? 1.5 : .7;
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function drawCollimator(comp) {
+  const items = collimatorDrawItems(comp);
+  for (const item of items) item.draw();
+}
+
+function collimatorDrawItems(comp) {
+  const items = [];
+  const zFront = comp.center[2] - comp.size[2]/2;
+  const zBack = comp.center[2] + comp.size[2]/2;
+
+  addCollimatorOuterSideFaces(items, comp);
+  drawCollimatorHoleWalls(items, comp);
+  items.push(perforatedCollimatorFaceItem(comp, zFront, .70));
+  items.push(perforatedCollimatorFaceItem(comp, zBack, 1.05));
+  return items.sort((a,b) => a.depth-b.depth);
+}
+
+function addProjectedQuad(points) {
+  const projected = points.map(project);
+  projected.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+  ctx.closePath();
+  return projected;
+}
+
+function projectedDepth(points) {
+  return points
+    .map(p => rotatePoint(p)[2])
+    .reduce((sum, z) => sum + z, 0) / points.length;
+}
+
+function polygonItem(comp, points, shadeFactor, strokeAlpha=.22) {
+  return {
+    depth: projectedDepth(points),
+    draw: () => {
+      const alpha = comp.id === highlighted ? Math.min(1, comp.alpha + .22) : comp.alpha;
+      ctx.beginPath();
+      addProjectedQuad(points);
+      ctx.fillStyle = shade(comp.color, shadeFactor, alpha);
+      ctx.strokeStyle = comp.id === highlighted ? '#ffffff' : `rgba(205,225,240,${strokeAlpha})`;
+      ctx.lineWidth = comp.id === highlighted ? 1.2 : .55;
+      ctx.fill();
+      ctx.stroke();
+    }
+  };
+}
+
+function addCollimatorOuterSideFaces(items, comp) {
+  const verts = boxVertices(comp.center, comp.size).map(project);
+  const rawVerts = boxVertices(comp.center, comp.size);
+  const sideFaces = [
+    [0,1,5,4, .82], [1,2,6,5, .94], [2,3,7,6, .76], [3,0,4,7, .88]
+  ].map(face => {
+    const pts = face.slice(0,4).map(i => verts[i]);
+    const depth = pts.reduce((sum,p) => sum+p[2], 0)/4;
+    return {pts, depth, shade:face[4], points: face.slice(0,4).map(i => rawVerts[i])};
+  }).sort((a,b) => a.depth-b.depth);
+
+  for (const poly of sideFaces) {
+    items.push(polygonItem(comp, poly.points, poly.shade));
+  }
+}
+
+function drawCollimatorHoleWalls(items, comp) {
+  const g = geometry.collimator;
+  const zFront = comp.center[2] - comp.size[2]/2;
+  const zBack = comp.center[2] + comp.size[2]/2;
+  for (let ix=-g.halfGrid; ix<=g.halfGrid; ix++) {
+    for (let iy=-g.halfGrid; iy<=g.halfGrid; iy++) {
+      const x0 = comp.center[0] + ix*g.pitch;
+      const y0 = comp.center[1] + iy*g.pitch;
+      const xMin = x0 - g.hole/2;
+      const xMax = x0 + g.hole/2;
+      const yMin = y0 - g.hole/2;
+      const yMax = y0 + g.hole/2;
+      items.push(polygonItem(comp, [
+        [xMin, yMin, zFront], [xMin, yMax, zFront],
+        [xMin, yMax, zBack], [xMin, yMin, zBack]
+      ], .78, .16)); // hole wall left
+      items.push(polygonItem(comp, [
+        [xMax, yMin, zFront], [xMax, yMax, zFront],
+        [xMax, yMax, zBack], [xMax, yMin, zBack]
+      ], .96, .16)); // hole wall right
+      items.push(polygonItem(comp, [
+        [xMin, yMin, zFront], [xMax, yMin, zFront],
+        [xMax, yMin, zBack], [xMin, yMin, zBack]
+      ], .72, .16)); // hole wall bottom
+      items.push(polygonItem(comp, [
+        [xMin, yMax, zFront], [xMax, yMax, zFront],
+        [xMax, yMax, zBack], [xMin, yMax, zBack]
+      ], .90, .16)); // hole wall top
+    }
+  }
+}
+
+function perforatedCollimatorFaceItem(comp, z, shadeFactor) {
+  return {
+    depth: rotatePoint([comp.center[0], comp.center[1], z])[2],
+    draw: () => drawPerforatedCollimatorFace(comp, z, shadeFactor)
+  };
+}
+
+function drawPerforatedCollimatorFace(comp, z, shadeFactor) {
+  const g = geometry.collimator;
+  const half = g.xy/2;
+  const alpha = comp.id === highlighted ? Math.min(1, comp.alpha + .22) : comp.alpha;
+  ctx.save();
+  ctx.beginPath();
+  addProjectedQuad([
+    [comp.center[0]-half, comp.center[1]-half, z],
+    [comp.center[0]+half, comp.center[1]-half, z],
+    [comp.center[0]+half, comp.center[1]+half, z],
+    [comp.center[0]-half, comp.center[1]+half, z]
+  ]);
+  for (let ix=-g.halfGrid; ix<=g.halfGrid; ix++) {
+    for (let iy=-g.halfGrid; iy<=g.halfGrid; iy++) {
+      const c = [comp.center[0] + ix*g.pitch, comp.center[1] + iy*g.pitch, z];
+      addProjectedQuad([
+        [c[0]-g.hole/2, c[1]-g.hole/2, c[2]],
+        [c[0]+g.hole/2, c[1]-g.hole/2, c[2]],
+        [c[0]+g.hole/2, c[1]+g.hole/2, c[2]],
+        [c[0]-g.hole/2, c[1]+g.hole/2, c[2]]
+      ]);
+    }
+  }
+  ctx.fillStyle = shade(comp.color, shadeFactor, alpha);
+  ctx.strokeStyle = comp.id === highlighted ? '#ffffff' : 'rgba(220,230,240,.30)';
+  ctx.lineWidth = comp.id === highlighted ? 1.1 : .65;
+  ctx.fill('evenodd');
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSphere(comp) {
+  const [x,y] = project(comp.center);
+  const r = Math.max(3, comp.radius*zoom*.42);
+  const grad = ctx.createRadialGradient(x-r*.3, y-r*.35, r*.1, x, y, r);
+  grad.addColorStop(0, rgba('#fff4bd', .95));
+  grad.addColorStop(1, rgba(comp.color, comp.alpha));
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = comp.id === highlighted ? '#ffffff' : 'rgba(255,240,180,.45)';
+  ctx.stroke();
+}
+
+function drawRays(comp) {
+  ctx.save();
+  ctx.strokeStyle = comp.id === highlighted ? 'rgba(255,245,170,.95)' : rgba(comp.color, comp.alpha);
+  ctx.lineWidth = comp.id === highlighted ? 1.6 : 1.0;
+  const targets = [-9.6,-3.2,3.2,9.6];
+  for (const x of targets) {
+    for (const y of [-6.4, 6.4]) {
+      const a = project([0,0,-116]);
+      const b = project([x,y,-31.5]);
+      const c = project([x,y,-6]);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.lineTo(c[0], c[1]);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawAxes() {
+  const origin = project([-55,-38,16]);
+  const axes = [
+    {p:[-42,-38,16], c:'#d66', l:'x'},
+    {p:[-55,-25,16], c:'#7ed27e', l:'y'},
+    {p:[-55,-38,29], c:'#70a7ff', l:'z'}
+  ];
+  ctx.font = '11px Segoe UI, Arial';
+  for (const axis of axes) {
+    const p = project(axis.p);
+    ctx.strokeStyle = axis.c;
+    ctx.fillStyle = axis.c;
+    ctx.beginPath();
+    ctx.moveTo(origin[0], origin[1]);
+    ctx.lineTo(p[0], p[1]);
+    ctx.stroke();
+    ctx.fillText(axis.l, p[0]+4, p[1]+2);
+  }
+}
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  ctx.clearRect(0,0,rect.width,rect.height);
+  ctx.fillStyle = 'rgba(255,255,255,.035)';
+  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  for (let z=-120; z<=20; z+=20) {
+    const a = project([-44,-28,z]);
+    const b = project([44,-28,z]);
+    const c = project([44,28,z]);
+    const d = project([-44,28,z]);
+    ctx.beginPath();
+    ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(c[0],c[1]); ctx.lineTo(d[0],d[1]); ctx.closePath();
+    ctx.stroke();
+  }
+  drawAxes();
+
+  const ordered = components.filter(c => c.visible).slice().sort((a,b) => {
+    const za = rotatePoint(a.center || [0,0,-70])[2];
+    const zb = rotatePoint(b.center || [0,0,-70])[2];
+    return za-zb;
+  });
+  for (const comp of ordered) {
+    if (comp.type === 'rays') drawRays(comp);
+    else if (comp.type === 'sphere') drawSphere(comp);
+    else if (comp.type === 'collimator') drawCollimator(comp);
+    else drawBox(comp);
+  }
+}
+
+function buildControls() {
+  const host = document.getElementById('components');
+  host.innerHTML = '';
+  for (const comp of components) {
+    const row = document.createElement('div');
+    row.className = 'component';
+    row.dataset.id = comp.id;
+    row.innerHTML = `
+      <input type="checkbox" ${comp.visible ? 'checked' : ''} aria-label="${comp.name}">
+      <label><strong><span class="swatch" style="background:${comp.color}"></span>${comp.name}</strong><small>${comp.note}</small></label>
+      <input type="range" min="0.08" max="1" step="0.02" value="${comp.alpha}">
+    `;
+    row.querySelector('input[type=checkbox]').addEventListener('change', e => {
+      comp.visible = e.target.checked;
+      draw();
+    });
+    row.querySelector('input[type=range]').addEventListener('input', e => {
+      comp.alpha = parseFloat(e.target.value);
+      draw();
+    });
+    row.addEventListener('mouseenter', () => {
+      highlighted = comp.id;
+      selection.textContent = `${comp.name}: ${comp.note}`;
+      draw();
+    });
+    row.addEventListener('mouseleave', () => {
+      highlighted = null;
+      selection.textContent = 'Hover a component row to highlight it.';
+      draw();
+    });
+    host.appendChild(row);
+  }
+}
+
+document.getElementById('reset').addEventListener('click', () => { yaw = -0.62; pitch = 0.54; zoom = 5.1; draw(); });
+document.getElementById('front').addEventListener('click', () => { yaw = 0; pitch = 0; zoom = 5.9; draw(); });
+document.getElementById('side').addEventListener('click', () => { yaw = Math.PI/2; pitch = 0.05; zoom = 5.7; draw(); });
+document.getElementById('top').addEventListener('click', () => { yaw = 0; pitch = Math.PI/2 - .02; zoom = 5.5; draw(); });
+
+canvas.addEventListener('mousedown', e => { dragging = true; last = [e.clientX,e.clientY]; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  yaw += (e.clientX-last[0])*.008;
+  pitch += (e.clientY-last[1])*.008;
+  pitch = Math.max(-1.25, Math.min(1.35, pitch));
+  last = [e.clientX,e.clientY];
+  draw();
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom *= e.deltaY > 0 ? .92 : 1.08;
+  zoom = Math.max(2.2, Math.min(12, zoom));
+  draw();
+}, {passive:false});
+
+window.addEventListener('resize', resize);
+buildControls();
+resize();
+</script>
+</body>
+</html>

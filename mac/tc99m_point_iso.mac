@@ -1,0 +1,14 @@
+/control/verbose 0
+/run/verbose 1
+/tracking/verbose 0
+
+/spect/output/file ../output/spect_tc99m_iso.root
+
+/gps/particle gamma
+/gps/pos/type Point
+/gps/pos/centre 0 0 -120 mm
+/gps/ang/type iso
+/gps/ene/type Mono
+/gps/ene/mono 140.5 keV
+
+/run/beamOn 10000

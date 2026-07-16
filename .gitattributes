@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.root binary
+*.wrl binary
+*.obj binary
+*.mtl binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary

@@ -1,0 +1,6 @@
+/vis/open VRML2FILE
+/vis/viewer/set/autoRefresh false
+/vis/drawVolume
+/vis/viewer/flush
+/vis/viewer/update
+/vis/viewer/set/autoRefresh true

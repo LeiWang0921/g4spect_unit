@@ -116,9 +116,9 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        0 0 -110,
-        1 0 -120,
+        0 0 0,
+        0 0 10,
+        1 0 0,
       ]
     }
     coordIndex [
@@ -163,9 +163,9 @@ Shape {
   geometry IndexedFaceSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        1 0 -120,
-        0 1 -120,
+        0 0 0,
+        1 0 0,
+        0 1 0,
       ]
     }
     coordIndex [
@@ -184,9 +184,9 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        0 0 -5,
-        0 0 -4,
+        0 0 0,
+        0 0 135,
+        0 0 140,
       ]
     }
     coordIndex [
@@ -196,7 +196,7 @@ Shape {
 }
 #---------- 3D MARKER (Circle)
 Anchor {
- description "(0  0  -120)"
+ description "(0  0  0)"
  children [
   Shape {
    appearance Appearance {
@@ -221,8 +221,8 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -4,
-        0.1 0 -4,
+        0 0 140,
+        0.1 0 140,
       ]
     }
     coordIndex [
@@ -260,7 +260,7 @@ Shape {
     def test_conversion_writes_blender_grouping_script_for_events(self):
         converter = load_converter()
         sample_vrml = """#VRML V2.0 utf8
-#---------- SOLID: LSO_phys.0
+#---------- SOLID: LYSO_phys.0
 Shape {
   geometry IndexedFaceSet {
     coord Coordinate {
@@ -280,9 +280,9 @@ Shape {
   geometry IndexedFaceSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        1 0 -120,
-        0 1 -120,
+        0 0 0,
+        1 0 0,
+        0 1 0,
       ]
     }
     coordIndex [
@@ -300,8 +300,8 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        0 0 -5,
+        0 0 0,
+        0 0 135,
       ]
     }
     coordIndex [
@@ -319,8 +319,8 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -5,
-        0.1 0 -5,
+        0 0 135,
+        0.1 0 135,
       ]
     }
     coordIndex [
@@ -338,8 +338,8 @@ Shape {
   geometry IndexedLineSet {
     coord Coordinate {
       point [
-        0 0 -120,
-        0 0 -4,
+        0 0 0,
+        0 0 140,
       ]
     }
     coordIndex [
@@ -376,7 +376,7 @@ Shape {
     def test_blender_import_script_preserves_detector_transparency(self):
         converter = load_converter()
         sample_vrml = """#VRML V2.0 utf8
-#---------- SOLID: LSO_phys.0
+#---------- SOLID: LYSO_phys.0
 Shape {
   appearance Appearance {
     material Material {
@@ -436,10 +436,10 @@ Shape {
             )
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("newmtl LSO_phys_0", mtl_text)
+        self.assertIn("newmtl LYSO_phys_0", mtl_text)
         self.assertIn("d 0.3", mtl_text)
         self.assertIn("newmtl OpticalGel_phys_0", mtl_text)
-        self.assertIn('"LSO_phys_0": 0.300000', script_text)
+        self.assertIn('"LYSO_phys_0": 0.300000', script_text)
         self.assertIn('"OpticalGel_phys_0": 0.300000', script_text)
         self.assertIn("def configure_material_transparency()", script_text)
         self.assertIn('material.blend_method = "BLEND"', script_text)

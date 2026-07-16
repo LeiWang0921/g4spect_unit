@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SPECT SiPM + LSO Unit Geometry</title>
+<title>SPECT SiPM + LYSO Unit Geometry</title>
 <style>
 :root { color-scheme: dark; --panel:#121922; --line:#2c3948; --muted:#96a6b7; --accent:#4ca7d8; }
 * { box-sizing:border-box; }
@@ -38,10 +38,12 @@ button:hover { background:#243343; }
 <body>
 <div id="app">
   <aside id="sidebar">
-    <h1>SPECT SiPM + LSO Unit</h1>
-    <p>Minimal Geant4 geometry: Tc-99m source, Pb parallel-hole collimator, LSO crystal, optical gel, and SiPM slab.</p>
+    <h1>SPECT SiPM + LYSO Unit</h1>
+    <p>Minimal Geant4 geometry: Tc-99m source, Pb parallel-hole collimator, LYSO crystal, optical gel, and SiPM slab.</p>
     <span class="badge">gamma: 140.5 keV</span>
-    <span class="badge">LSO sensitive volume</span>
+    <span class="badge">LYSO sensitive volume</span>
+    <span class="badge">64 mm detector patch</span>
+    <span class="badge">35 mm Pb collimator</span>
     <span class="badge">tree_chroma output</span>
     <span class="badge">collimator holes: air/world</span>
 
@@ -75,27 +77,27 @@ const selection = document.getElementById('selection');
 
 const geometry = {
   collimator: {
-    xy: 32,
-    length: 25,
-    halfGrid: 4,
-    pitch: 3.2,
-    hole: 2.4
+    xy: 64,
+    length: 35,
+    halfGrid: 18,
+    pitch: 1.7,
+    hole: 1.5
   }
 };
 
 const components = [
-  {id:'source', name:'Tc-99m point source', note:'140.5 keV gamma source at z = -120 mm', color:'#f0d36a', visible:true, alpha:1, type:'sphere', center:[0,0,-120], radius:4},
+  {id:'source', name:'Tc-99m point source', note:'140.5 keV gamma source at origin', color:'#f0d36a', visible:true, alpha:1, type:'sphere', center:[0,0,0], radius:4},
   {id:'beam', name:'Accepted gamma direction', note:'Directed smoke-test rays toward collimator holes', color:'#f7e38a', visible:true, alpha:.8, type:'rays'},
-  {id:'collimator', name:'Pb parallel-hole collimator', note:'32 x 32 x 25 mm Pb; 9 x 9 air/world square holes, 2.4 mm aperture, 3.2 mm pitch', color:'#7f8b96', visible:true, alpha:.92, type:'collimator', center:[0,0,-19], size:[32,32,25]},
-  {id:'lso', name:'LSO crystal', note:'32 x 32 x 10 mm sensitive detector', color:'#39aee2', visible:true, alpha:.64, type:'box', center:[0,0,0], size:[32,32,10]},
-  {id:'gel', name:'Optical gel', note:'32 x 32 x 0.5 mm optical coupling layer', color:'#e7f5ff', visible:true, alpha:.42, type:'box', center:[0,0,5.25], size:[32,32,.5]},
-  {id:'sipm', name:'SiPM slab', note:'32 x 32 x 1 mm silicon readout plane', color:'#1d2229', visible:true, alpha:1, type:'box', center:[0,0,6], size:[32,32,1]}
+  {id:'collimator', name:'Pb parallel-hole collimator', note:'64 mm x 64 mm x 35 mm Pb; 37 x 37 air/world square holes, 1.5 mm aperture, 1.7 mm pitch', color:'#7f8b96', visible:true, alpha:.92, type:'collimator', center:[0,0,117.5], size:[64,64,35]},
+  {id:'lyso', name:'LYSO crystal', note:'64 mm x 64 mm x 10 mm sensitive detector', color:'#39aee2', visible:true, alpha:.64, type:'box', center:[0,0,140], size:[64,64,10]},
+  {id:'gel', name:'Optical gel', note:'64 mm x 64 mm x 0.5 mm optical coupling layer', color:'#e7f5ff', visible:true, alpha:.42, type:'box', center:[0,0,145.25], size:[64,64,.5]},
+  {id:'sipm', name:'SiPM slab', note:'64 mm x 64 mm x 1 mm silicon readout plane', color:'#1d2229', visible:true, alpha:1, type:'box', center:[0,0,146], size:[64,64,1]}
 ];
 
 let highlighted = null;
 let yaw = -0.62;
 let pitch = 0.54;
-let zoom = 5.1;
+let zoom = 3.2;
 let dragging = false;
 let last = [0,0];
 
@@ -325,12 +327,12 @@ function drawRays(comp) {
   ctx.save();
   ctx.strokeStyle = comp.id === highlighted ? 'rgba(255,245,170,.95)' : rgba(comp.color, comp.alpha);
   ctx.lineWidth = comp.id === highlighted ? 1.6 : 1.0;
-  const targets = [-9.6,-3.2,3.2,9.6];
+  const targets = [-10.2,-3.4,3.4,10.2];
   for (const x of targets) {
-    for (const y of [-6.4, 6.4]) {
-      const a = project([0,0,-116]);
-      const b = project([x,y,-31.5]);
-      const c = project([x,y,-6]);
+    for (const y of [-6.8, 6.8]) {
+      const a = project([0,0,0]);
+      const b = project([x,y,100]);
+      const c = project([x,y,145]);
       ctx.beginPath();
       ctx.moveTo(a[0], a[1]);
       ctx.lineTo(b[0], b[1]);
@@ -342,11 +344,11 @@ function drawRays(comp) {
 }
 
 function drawAxes() {
-  const origin = project([-55,-38,16]);
+  const origin = project([-76,-52,158]);
   const axes = [
-    {p:[-42,-38,16], c:'#d66', l:'x'},
-    {p:[-55,-25,16], c:'#7ed27e', l:'y'},
-    {p:[-55,-38,29], c:'#70a7ff', l:'z'}
+    {p:[-62,-52,158], c:'#d66', l:'x'},
+    {p:[-76,-38,158], c:'#7ed27e', l:'y'},
+    {p:[-76,-52,172], c:'#70a7ff', l:'z'}
   ];
   ctx.font = '11px Segoe UI, Arial';
   for (const axis of axes) {
@@ -366,11 +368,11 @@ function draw() {
   ctx.clearRect(0,0,rect.width,rect.height);
   ctx.fillStyle = 'rgba(255,255,255,.035)';
   ctx.strokeStyle = 'rgba(255,255,255,.04)';
-  for (let z=-120; z<=20; z+=20) {
-    const a = project([-44,-28,z]);
-    const b = project([44,-28,z]);
-    const c = project([44,28,z]);
-    const d = project([-44,28,z]);
+  for (let z=0; z<=160; z+=20) {
+    const a = project([-44,-44,z]);
+    const b = project([44,-44,z]);
+    const c = project([44,44,z]);
+    const d = project([-44,44,z]);
     ctx.beginPath();
     ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(c[0],c[1]); ctx.lineTo(d[0],d[1]); ctx.closePath();
     ctx.stroke();
@@ -378,8 +380,8 @@ function draw() {
   drawAxes();
 
   const ordered = components.filter(c => c.visible).slice().sort((a,b) => {
-    const za = rotatePoint(a.center || [0,0,-70])[2];
-    const zb = rotatePoint(b.center || [0,0,-70])[2];
+    const za = rotatePoint(a.center || [0,0,75])[2];
+    const zb = rotatePoint(b.center || [0,0,75])[2];
     return za-zb;
   });
   for (const comp of ordered) {
@@ -424,9 +426,9 @@ function buildControls() {
   }
 }
 
-document.getElementById('reset').addEventListener('click', () => { yaw = -0.62; pitch = 0.54; zoom = 5.1; draw(); });
+document.getElementById('reset').addEventListener('click', () => { yaw = -0.62; pitch = 0.54; zoom = 3.2; draw(); });
 document.getElementById('front').addEventListener('click', () => { yaw = 0; pitch = 0; zoom = 5.9; draw(); });
-document.getElementById('side').addEventListener('click', () => { yaw = Math.PI/2; pitch = 0.05; zoom = 5.7; draw(); });
+document.getElementById('side').addEventListener('click', () => { yaw = Math.PI/2; pitch = 0.05; zoom = 3.6; draw(); });
 document.getElementById('top').addEventListener('click', () => { yaw = 0; pitch = Math.PI/2 - .02; zoom = 5.5; draw(); });
 
 canvas.addEventListener('mousedown', e => { dragging = true; last = [e.clientX,e.clientY]; });

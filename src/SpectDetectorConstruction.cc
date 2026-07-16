@@ -8,19 +8,16 @@
 #include "G4NistManager.hh"
 #include "G4PVPlacement.hh"
 #include "G4SDManager.hh"
-#include "G4SubtractionSolid.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4ThreeVector.hh"
 #include "G4VisAttributes.hh"
 
-#include <sstream>
-
 SpectDetectorConstruction::SpectDetectorConstruction()
   : G4VUserDetectorConstruction(),
-    fLSOLogical(0),
+    fLYSOLogical(0),
     fWorldMaterial(0),
     fLeadMaterial(0),
-    fLSOMaterial(0),
+    fLYSOMaterial(0),
     fGelMaterial(0),
     fSiPMMaterial(0)
 {
@@ -30,18 +27,20 @@ SpectDetectorConstruction::~SpectDetectorConstruction()
 {
 }
 
-G4Material* SpectDetectorConstruction::BuildLSO()
+G4Material* SpectDetectorConstruction::BuildLYSO()
 {
   G4NistManager* nist = G4NistManager::Instance();
   G4Element* lu = nist->FindOrBuildElement("Lu");
+  G4Element* y = nist->FindOrBuildElement("Y");
   G4Element* si = nist->FindOrBuildElement("Si");
   G4Element* o = nist->FindOrBuildElement("O");
 
-  G4Material* lso = new G4Material("LSO", 7.40*g/cm3, 3);
-  lso->AddElement(lu, 2);
-  lso->AddElement(si, 1);
-  lso->AddElement(o, 5);
-  return lso;
+  G4Material* lyso = new G4Material("LYSO", 7.10*g/cm3, 4);
+  lyso->AddElement(lu, 0.7144);
+  lyso->AddElement(y, 0.0403);
+  lyso->AddElement(si, 0.0637);
+  lyso->AddElement(o, 0.1816);
+  return lyso;
 }
 
 G4Material* SpectDetectorConstruction::BuildOpticalGel()
@@ -66,7 +65,7 @@ void SpectDetectorConstruction::DefineMaterials()
   fWorldMaterial = nist->FindOrBuildMaterial("G4_AIR");
   fLeadMaterial = nist->FindOrBuildMaterial("G4_Pb");
   fSiPMMaterial = nist->FindOrBuildMaterial("G4_Si");
-  fLSOMaterial = BuildLSO();
+  fLYSOMaterial = BuildLYSO();
   fGelMaterial = BuildOpticalGel();
 }
 
@@ -80,67 +79,156 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   G4VPhysicalVolume* worldPhysical =
     new G4PVPlacement(0, G4ThreeVector(), "world_phys", worldLogical, 0, false, 0);
 
-  const G4double detectorXY = 32.0*mm;
-  const G4double lsoThickness = 10.0*mm;
-  G4Box* lsoSolid =
-    new G4Box("LSO_solid", detectorXY/2.0, detectorXY/2.0, lsoThickness/2.0);
-  fLSOLogical = new G4LogicalVolume(lsoSolid, fLSOMaterial, "LSO_log");
-  new G4PVPlacement(0, G4ThreeVector(0, 0, 0), "LSO_phys",
-                    fLSOLogical, worldPhysical, false, 0);
+  const G4double detectorXY = 64.0*mm;
+  const G4double lysoThickness = 10.0*mm;
+  const G4double lysoCenterZ = 140.0*mm;
+  G4Box* lysoSolid =
+    new G4Box("LYSO_solid", detectorXY/2.0, detectorXY/2.0, lysoThickness/2.0);
+  fLYSOLogical = new G4LogicalVolume(lysoSolid, fLYSOMaterial, "LYSO_log");
+  new G4PVPlacement(0, G4ThreeVector(0, 0, lysoCenterZ), "LYSO_phys",
+                    fLYSOLogical, worldPhysical, false, 0);
 
   const G4double gelThickness = 0.5*mm;
+  const G4double gelCenterZ = 145.25*mm;
   G4Box* gelSolid =
     new G4Box("OpticalGel_solid", detectorXY/2.0, detectorXY/2.0, gelThickness/2.0);
   G4LogicalVolume* gelLogical =
     new G4LogicalVolume(gelSolid, fGelMaterial, "OpticalGel_log");
-  new G4PVPlacement(0, G4ThreeVector(0, 0, 5.25*mm), "OpticalGel_phys",
+  new G4PVPlacement(0, G4ThreeVector(0, 0, gelCenterZ), "OpticalGel_phys",
                     gelLogical, worldPhysical, false, 0);
 
   const G4double sipmThickness = 1.0*mm;
+  const G4double sipmCenterZ = 146.0*mm;
   G4Box* sipmSolid =
     new G4Box("SiPM_solid", detectorXY/2.0, detectorXY/2.0, sipmThickness/2.0);
   G4LogicalVolume* sipmLogical =
     new G4LogicalVolume(sipmSolid, fSiPMMaterial, "SiPM_log");
-  new G4PVPlacement(0, G4ThreeVector(0, 0, 6.0*mm), "SiPM_phys",
+  new G4PVPlacement(0, G4ThreeVector(0, 0, sipmCenterZ), "SiPM_phys",
                     sipmLogical, worldPhysical, false, 0);
 
-  const G4double collimatorXY = 32.0*mm;
-  const G4double collimatorLength = 25.0*mm;
-  G4VSolid* collimatorSolid =
-    new G4Box("Collimator_block", collimatorXY/2.0, collimatorXY/2.0, collimatorLength/2.0);
-  G4Box* holeSolid = new G4Box("Collimator_square_hole", 1.2*mm, 1.2*mm, 13.0*mm);
+  const G4double collimatorXY = 64.0*mm;
+  const G4double collimatorLength = 35.0*mm;
+  const G4double collimatorCenterZ = 117.5*mm;
+  const G4double holeSize = 1.5*mm;
+  const G4double septumThickness = 0.2*mm;
+  const G4int halfGrid = 18;
+  const G4double pitch = 1.7*mm;
+  const G4int holeCount = 2*halfGrid + 1;
+  const G4double activeXY = holeCount*pitch;
+  const G4double borderThickness = (collimatorXY - activeXY)/2.0;
 
-  const G4int halfGrid = 4;
-  const G4double pitch = 3.2*mm;
+  G4LogicalVolume* collimatorLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_envelope",
+                collimatorXY/2.0, collimatorXY/2.0, collimatorLength/2.0),
+      fWorldMaterial, "Collimator_envelope_log");
+  new G4PVPlacement(0, G4ThreeVector(0, 0, collimatorCenterZ), "Collimator_phys",
+                    collimatorLogical, worldPhysical, false, 0);
+
+  G4LogicalVolume* borderSideLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_border_side",
+                borderThickness/2.0, collimatorXY/2.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_border_side_log");
+  G4LogicalVolume* borderTopBottomLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_border_top_bottom",
+                activeXY/2.0, borderThickness/2.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_border_top_bottom_log");
+  G4LogicalVolume* outerVerticalSeptumLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_outer_vertical_septum",
+                septumThickness/4.0, activeXY/2.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_outer_vertical_septum_log");
+  G4LogicalVolume* innerVerticalSeptumLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_inner_vertical_septum",
+                septumThickness/2.0, activeXY/2.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_inner_vertical_septum_log");
+  G4LogicalVolume* outerHorizontalSeptumLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_outer_horizontal_septum",
+                holeSize/2.0, septumThickness/4.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_outer_horizontal_septum_log");
+  G4LogicalVolume* innerHorizontalSeptumLogical =
+    new G4LogicalVolume(
+      new G4Box("Collimator_inner_horizontal_septum",
+                holeSize/2.0, septumThickness/2.0, collimatorLength/2.0),
+      fLeadMaterial, "Collimator_inner_horizontal_septum_log");
+
+  G4int copyNo = 0;
+  const G4double activeEdge = activeXY/2.0;
+  const G4double borderCenter = collimatorXY/2.0 - borderThickness/2.0;
+  new G4PVPlacement(0, G4ThreeVector(-borderCenter, 0, 0),
+                    borderSideLogical, "Collimator_border_side_phys",
+                    collimatorLogical, false, copyNo++);
+  new G4PVPlacement(0, G4ThreeVector(borderCenter, 0, 0),
+                    borderSideLogical, "Collimator_border_side_phys",
+                    collimatorLogical, false, copyNo++);
+  new G4PVPlacement(0, G4ThreeVector(0, -borderCenter, 0),
+                    borderTopBottomLogical, "Collimator_border_top_bottom_phys",
+                    collimatorLogical, false, copyNo++);
+  new G4PVPlacement(0, G4ThreeVector(0, borderCenter, 0),
+                    borderTopBottomLogical, "Collimator_border_top_bottom_phys",
+                    collimatorLogical, false, copyNo++);
+
+  new G4PVPlacement(0, G4ThreeVector(-activeEdge + septumThickness/4.0, 0, 0),
+                    outerVerticalSeptumLogical,
+                    "Collimator_outer_vertical_septum_phys",
+                    collimatorLogical, false, copyNo++);
+  new G4PVPlacement(0, G4ThreeVector(activeEdge - septumThickness/4.0, 0, 0),
+                    outerVerticalSeptumLogical,
+                    "Collimator_outer_vertical_septum_phys",
+                    collimatorLogical, false, copyNo++);
+  for (G4int ix = -halfGrid; ix < halfGrid; ++ix) {
+    const G4double x = (ix + 0.5)*pitch;
+    new G4PVPlacement(0, G4ThreeVector(x, 0, 0),
+                      innerVerticalSeptumLogical,
+                      "Collimator_inner_vertical_septum_phys",
+                      collimatorLogical, false, copyNo++);
+  }
+
   for (G4int ix = -halfGrid; ix <= halfGrid; ++ix) {
-    for (G4int iy = -halfGrid; iy <= halfGrid; ++iy) {
-      std::ostringstream name;
-      name << "Collimator_hole_sub_" << ix << "_" << iy;
-      G4ThreeVector offset(ix*pitch, iy*pitch, 0);
-      collimatorSolid =
-        new G4SubtractionSolid(name.str(), collimatorSolid, holeSolid, 0, offset);
+    const G4double x = ix*pitch;
+    new G4PVPlacement(0, G4ThreeVector(x, -activeEdge + septumThickness/4.0, 0),
+                      outerHorizontalSeptumLogical,
+                      "Collimator_outer_horizontal_septum_phys",
+                      collimatorLogical, false, copyNo++);
+    new G4PVPlacement(0, G4ThreeVector(x, activeEdge - septumThickness/4.0, 0),
+                      outerHorizontalSeptumLogical,
+                      "Collimator_outer_horizontal_septum_phys",
+                      collimatorLogical, false, copyNo++);
+
+    for (G4int iy = -halfGrid; iy < halfGrid; ++iy) {
+      const G4double y = (iy + 0.5)*pitch;
+      new G4PVPlacement(0, G4ThreeVector(x, y, 0),
+                        innerHorizontalSeptumLogical,
+                        "Collimator_inner_horizontal_septum_phys",
+                        collimatorLogical, false, copyNo++);
     }
   }
 
-  G4LogicalVolume* collimatorLogical =
-    new G4LogicalVolume(collimatorSolid, fLeadMaterial, "Collimator_log");
-  new G4PVPlacement(0, G4ThreeVector(0, 0, -19.0*mm), "Collimator_phys",
-                    collimatorLogical, worldPhysical, false, 0);
-
   worldLogical->SetVisAttributes(G4VisAttributes::Invisible);
-  fLSOLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.0, 0.7, 1.0, 0.4)));
+  fLYSOLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.0, 0.7, 1.0, 0.4)));
   gelLogical->SetVisAttributes(new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.3)));
   sipmLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.1, 0.1, 0.1)));
-  collimatorLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.45, 0.45, 0.45)));
+  collimatorLogical->SetVisAttributes(G4VisAttributes::Invisible);
+  G4VisAttributes* leadVis = new G4VisAttributes(G4Colour(0.45, 0.45, 0.45));
+  borderSideLogical->SetVisAttributes(leadVis);
+  borderTopBottomLogical->SetVisAttributes(leadVis);
+  outerVerticalSeptumLogical->SetVisAttributes(leadVis);
+  innerVerticalSeptumLogical->SetVisAttributes(leadVis);
+  outerHorizontalSeptumLogical->SetVisAttributes(leadVis);
+  innerHorizontalSeptumLogical->SetVisAttributes(leadVis);
 
   return worldPhysical;
 }
 
 void SpectDetectorConstruction::ConstructSDandField()
 {
-  SpectSensitiveDetector* lsoSD = new SpectSensitiveDetector("/SPECT/LSOSD");
-  G4SDManager::GetSDMpointer()->AddNewDetector(lsoSD);
-  if (fLSOLogical) {
-    SetSensitiveDetector(fLSOLogical, lsoSD);
+  SpectSensitiveDetector* lysoSD = new SpectSensitiveDetector("/SPECT/LYSOSD");
+  G4SDManager::GetSDMpointer()->AddNewDetector(lysoSD);
+  if (fLYSOLogical) {
+    SetSensitiveDetector(fLYSOLogical, lysoSD);
   }
 }

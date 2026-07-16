@@ -56,7 +56,7 @@ def _close_rgb(
 
 def _is_source_point(point: tuple[float, float, float]) -> bool:
     x, y, z = point
-    return abs(x) < 1e-6 and abs(y) < 1e-6 and abs(z + 120.0) < 1e-6
+    return abs(x) < 1e-6 and abs(y) < 1e-6 and abs(z) < 1e-6
 
 
 def _name_polylines(shapes: list[Shape]) -> None:

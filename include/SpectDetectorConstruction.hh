@@ -18,13 +18,13 @@ public:
 
 private:
   void DefineMaterials();
-  G4Material* BuildLSO();
+  G4Material* BuildLYSO();
   G4Material* BuildOpticalGel();
 
-  G4LogicalVolume* fLSOLogical;
+  G4LogicalVolume* fLYSOLogical;
   G4Material* fWorldMaterial;
   G4Material* fLeadMaterial;
-  G4Material* fLSOMaterial;
+  G4Material* fLYSOMaterial;
   G4Material* fGelMaterial;
   G4Material* fSiPMMaterial;
 };

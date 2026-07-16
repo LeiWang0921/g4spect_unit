@@ -9,7 +9,7 @@ SpectSensitiveDetector::SpectSensitiveDetector(const G4String& name)
   : G4VSensitiveDetector(name),
     fHitsCollection(0)
 {
-  collectionName.insert("lsoHitsCollection");
+  collectionName.insert("lysoHitsCollection");
 }
 
 SpectSensitiveDetector::~SpectSensitiveDetector()

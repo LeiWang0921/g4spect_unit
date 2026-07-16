@@ -25,7 +25,7 @@ void SpectRunAction::BeginOfRunAction(const G4Run*)
   analysis->SetFirstNtupleId(0);
   analysis->OpenFile(fOutputFile);
 
-  analysis->CreateNtuple("tree_chroma", "LSO energy-deposition hits for Chroma");
+  analysis->CreateNtuple("tree_chroma", "LYSO energy-deposition hits for Chroma");
   analysis->CreateNtupleDColumn("event");
   analysis->CreateNtupleDColumn("hits");
   analysis->CreateNtupleDColumn("xpos");

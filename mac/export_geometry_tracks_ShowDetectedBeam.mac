@@ -6,8 +6,9 @@
 
 /gps/particle gamma
 /gps/pos/type Point
-/gps/pos/centre 0 0 -120 mm
-/gps/ang/type iso
+/gps/pos/centre 0 0 0 mm
+/gps/ang/type beam1d
+/gps/direction 0 0 1
 /gps/ene/type Mono
 /gps/ene/mono 140.5 keV
 
@@ -15,7 +16,7 @@
 /vis/viewer/set/autoRefresh false
 /vis/verbose warnings
 /vis/drawVolume
-/vis/scene/add/axes 0 0 -120 10 mm
+/vis/scene/add/axes 0 0 0 10 mm
 
 /vis/scene/add/trajectories rich smooth
 /vis/modeling/trajectories/create/drawByParticleID
@@ -26,9 +27,9 @@
 /vis/modeling/trajectories/drawByParticleID-0/set e+ cyan
 
 /vis/filtering/trajectories/create/encounteredVolumeFilter
-/vis/filtering/trajectories/encounteredVolumeFilter-0/add LSO_phys
-/vis/scene/endOfEventAction accumulate -1
+/vis/filtering/trajectories/encounteredVolumeFilter-0/add LYSO_phys
+/vis/scene/endOfEventAction accumulate 100
 
-/run/beamOn 10000
+/run/beamOn 100
 
 /vis/viewer/flush

@@ -6,7 +6,7 @@
 
 /gps/particle gamma
 /gps/pos/type Point
-/gps/pos/centre 0 0 -120 mm
+/gps/pos/centre 0 0 0 mm
 /gps/ang/type beam1d
 /gps/direction 0 0 1
 /gps/ene/type Mono

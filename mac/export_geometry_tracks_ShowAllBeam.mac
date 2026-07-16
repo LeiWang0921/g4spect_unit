@@ -6,7 +6,7 @@
 
 /gps/particle gamma
 /gps/pos/type Point
-/gps/pos/centre 0 0 -120 mm
+/gps/pos/centre 0 0 0 mm
 /gps/ang/type iso
 # /gps/direction 0 0 1
 /gps/ene/type Mono
@@ -16,7 +16,7 @@
 /vis/viewer/set/autoRefresh false
 /vis/verbose warnings
 /vis/drawVolume
-/vis/scene/add/axes 0 0 -120 10 mm
+/vis/scene/add/axes 0 0 0 10 mm
 
 /vis/scene/add/trajectories rich smooth
 /vis/modeling/trajectories/create/drawByParticleID

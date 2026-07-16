@@ -32,7 +32,7 @@ SpectEventAction::~SpectEventAction()
 void SpectEventAction::EndOfEventAction(const G4Event* event)
 {
   if (fHitsCollectionID < 0) {
-    fHitsCollectionID = G4SDManager::GetSDMpointer()->GetCollectionID("lsoHitsCollection");
+    fHitsCollectionID = G4SDManager::GetSDMpointer()->GetCollectionID("lysoHitsCollection");
   }
 
   G4HCofThisEvent* hce = event->GetHCofThisEvent();

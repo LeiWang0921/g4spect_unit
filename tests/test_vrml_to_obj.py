@@ -450,6 +450,18 @@ Shape {
 
         self.assertEqual(converter.LINE_TUBE_RADIUS, 0.03)
 
+    def test_default_copy_target_uses_local_visualization_directory(self):
+        converter = load_converter()
+
+        self.assertEqual(
+            converter.DEFAULT_COPY_TARGET,
+            "Leiwa@10.90.70.110:/E:/SPECT/geometry_exports/",
+        )
+        self.assertEqual(
+            converter.DEFAULT_LOCAL_EXPORT_DIR,
+            r"E:\SPECT\geometry_exports",
+        )
+
     def test_no_argument_mode_copies_latest_build_wrl_to_tracks_exports(self):
         converter = load_converter()
 

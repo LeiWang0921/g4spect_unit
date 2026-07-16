@@ -115,7 +115,7 @@ cd /RHEL7/home/lwang2/g4spect_unit/build
 `tools/vrml_to_obj.py` 已经内置默认本地复制目标：
 
 ```text
-Leiwa@10.90.70.110:/E:/SPECT/g4spect_unit/geometry_exports/
+Leiwa@10.90.70.110:/E:/SPECT/geometry_exports/
 ```
 
 因此在服务器上无参数运行：
@@ -125,7 +125,7 @@ python3 ../tools/vrml_to_obj.py
 ```
 
 会在转换完成后自动尝试把 `.wrl/.obj/.mtl` 和 Blender 导入脚本复制到本地
-`E:\SPECT\g4spect_unit\geometry_exports\`，文件名保持为
+`E:\SPECT\geometry_exports\`，文件名保持为
 `spect_geometry_tracks.wrl/.obj/.mtl` 和 `import_tracks_blender.py`。
 
 前提是服务器能通过 `scp` 访问本地电脑。当前本地 IP 是 `10.90.70.110`；如果本地没有开启
@@ -218,27 +218,27 @@ cp geometry_exports/spect_geometry_tracks.mtl geometry_exports/spect_geometry_tr
 正常情况下，这一步会在 `python3 ../tools/vrml_to_obj.py` 成功后自动完成。本地会得到：
 
 ```text
-E:\SPECT\g4spect_unit\geometry_exports\spect_geometry_tracks.wrl
-E:\SPECT\g4spect_unit\geometry_exports\spect_geometry_tracks.obj
-E:\SPECT\g4spect_unit\geometry_exports\spect_geometry_tracks.mtl
-E:\SPECT\g4spect_unit\geometry_exports\import_tracks_blender.py
+E:\SPECT\geometry_exports\spect_geometry_tracks.wrl
+E:\SPECT\geometry_exports\spect_geometry_tracks.obj
+E:\SPECT\geometry_exports\spect_geometry_tracks.mtl
+E:\SPECT\geometry_exports\import_tracks_blender.py
 ```
 
 如果没有配置服务器主动复制，仍然可以在本地 PowerShell 中手动拉取最近一次运行的默认文件：
 
 ```powershell
-New-Item -ItemType Directory -Force -Path 'g4spect_unit\geometry_exports' | Out-Null
+New-Item -ItemType Directory -Force -Path 'geometry_exports' | Out-Null
 
 C:\Windows\System32\OpenSSH\scp.exe `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/spect_geometry_tracks.wrl `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/spect_geometry_tracks.obj `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/spect_geometry_tracks.mtl `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/import_tracks_blender.py `
-  g4spect_unit\geometry_exports\
+  geometry_exports\
 
-Get-Item g4spect_unit\geometry_exports\spect_geometry_tracks.* |
+Get-Item geometry_exports\spect_geometry_tracks.* |
   Select-Object Name,Length,LastWriteTime
-Get-Item g4spect_unit\geometry_exports\import_tracks_blender.py |
+Get-Item geometry_exports\import_tracks_blender.py |
   Select-Object Name,Length,LastWriteTime
 ```
 
@@ -248,7 +248,7 @@ Get-Item g4spect_unit\geometry_exports\import_tracks_blender.py |
 C:\Windows\System32\OpenSSH\scp.exe `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/spect_geometry_tracks_ShowAllBeam.* `
   lwang2@phaarmonster.triumf.ca:/RHEL7/home/lwang2/g4spect_unit/geometry_exports/spect_geometry_tracks_ShowDetectedBeam.* `
-  g4spect_unit\geometry_exports\
+  geometry_exports\
 ```
 
 打开 3D 视图时优先在 Blender 中运行 `import_tracks_blender.py`，不要直接用
@@ -264,7 +264,7 @@ Blender 中推荐操作：
 3. 在 Text Editor 中打开：
 
    ```text
-   E:\SPECT\g4spect_unit\geometry_exports\import_tracks_blender.py
+   E:\SPECT\geometry_exports\import_tracks_blender.py
    ```
 
 4. 点击 `Run Script`。脚本会自动导入同目录下的 `spect_geometry_tracks.obj`。

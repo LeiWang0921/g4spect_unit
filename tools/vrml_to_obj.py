@@ -19,8 +19,8 @@ FLOAT_RE = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
 INT_RE = re.compile(r"-?\d+")
 DEFAULT_BUILD_WRL = "g4_00.wrl"
 COPY_TARGET_ENV = "G4SPECT_COPY_TO"
-DEFAULT_COPY_TARGET = "Leiwa@10.90.70.110:/E:/SPECT/g4spect_unit/geometry_exports/"
-DEFAULT_LOCAL_EXPORT_DIR = r"E:\SPECT\g4spect_unit\geometry_exports"
+DEFAULT_COPY_TARGET = "Leiwa@10.90.70.110:/E:/SPECT/geometry_exports/"
+DEFAULT_LOCAL_EXPORT_DIR = r"E:\SPECT\geometry_exports"
 LINE_TUBE_RADIUS = 0.03
 
 

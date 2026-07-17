@@ -11,7 +11,7 @@ class G4VPhysicalVolume;
 class SpectDetectorConstruction : public G4VUserDetectorConstruction
 {
 public:
-  SpectDetectorConstruction(G4bool enableDicomPhantom = false);
+  SpectDetectorConstruction(G4bool enableDicomPhantom = false, G4bool enableHumanPhantom = false);
   virtual ~SpectDetectorConstruction();
 
   virtual G4VPhysicalVolume* Construct();
@@ -24,6 +24,7 @@ private:
 
   G4LogicalVolume* fLYSOLogical;
   G4bool fEnableDicomPhantom;
+  G4bool fEnableHumanPhantom;
   G4Material* fWorldMaterial;
   G4Material* fLeadMaterial;
   G4Material* fLYSOMaterial;

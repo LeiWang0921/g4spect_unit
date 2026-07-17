@@ -7,6 +7,7 @@
 #include "Randomize.hh"
 
 #include <cstdlib>
+#include <iostream>
 
 #ifdef G4VIS_USE
 #include "G4VisExecutive.hh"
@@ -34,18 +35,28 @@ int main(int argc, char** argv)
   G4Random::setTheEngine(new CLHEP::RanecuEngine);
 
   G4bool enableDicomPhantom = EnvEnabled("G4SPECT_ENABLE_DICOM_PHANTOM");
+  G4bool enableHumanPhantom = EnvEnabled("G4SPECT_ENABLE_HUMAN_PHANTOM");
   G4String macroFile;
   for (G4int i = 1; i < argc; ++i) {
     G4String arg(argv[i]);
     if (arg == "--dicom-phantom") {
       enableDicomPhantom = true;
+    } else if (arg == "--human-phantom") {
+      enableHumanPhantom = true;
     } else if (macroFile.empty()) {
       macroFile = arg;
     }
   }
 
+  if (enableDicomPhantom && enableHumanPhantom) {
+    std::cerr << "Cannot enable both --dicom-phantom and --human-phantom in the same run. "
+              << "Pick one phantom geometry." << std::endl;
+    return 1;
+  }
+
   G4RunManager* runManager = new G4RunManager;
-  runManager->SetUserInitialization(new SpectDetectorConstruction(enableDicomPhantom));
+  runManager->SetUserInitialization(
+    new SpectDetectorConstruction(enableDicomPhantom, enableHumanPhantom));
   runManager->SetUserInitialization(new SpectPhysicsList);
   runManager->SetUserInitialization(new SpectActionInitialization);
   runManager->Initialize();

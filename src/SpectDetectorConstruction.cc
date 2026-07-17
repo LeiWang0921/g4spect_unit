@@ -1,5 +1,6 @@
 #include "SpectDetectorConstruction.hh"
 #include "SpectDicomPhantom.hh"
+#include "SpectMirdHumanPhantom.hh"
 #include "SpectSensitiveDetector.hh"
 
 #include "G4Box.hh"
@@ -49,10 +50,12 @@ G4double DetectorFrontDistance()
 }
 }
 
-SpectDetectorConstruction::SpectDetectorConstruction(G4bool enableDicomPhantom)
+SpectDetectorConstruction::SpectDetectorConstruction(
+  G4bool enableDicomPhantom, G4bool enableHumanPhantom)
   : G4VUserDetectorConstruction(),
     fLYSOLogical(0),
     fEnableDicomPhantom(enableDicomPhantom),
+    fEnableHumanPhantom(enableHumanPhantom),
     fWorldMaterial(0),
     fLeadMaterial(0),
     fLYSOMaterial(0),
@@ -132,7 +135,10 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   const G4double detectorBackZ =
     detectorFrontZ + detectorStackFrontOffset + lysoThickness + gelThickness
     + sipmThickness;
-  const G4double worldHalfLength = std::max(500.0*mm, detectorBackZ + 100.0*mm);
+  G4double worldHalfLength = std::max(500.0*mm, detectorBackZ + 100.0*mm);
+  if (fEnableHumanPhantom) {
+    worldHalfLength = std::max(worldHalfLength, 1300.0*mm);
+  }
 
   G4Box* worldSolid =
     new G4Box("world", worldHalfLength, worldHalfLength, worldHalfLength);
@@ -144,6 +150,10 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   if (fEnableDicomPhantom) {
     SpectDicomPhantom dicomPhantom;
     dicomPhantom.Construct(worldLogical);
+  }
+  if (fEnableHumanPhantom) {
+    SpectMirdHumanPhantom humanPhantom;
+    humanPhantom.Construct(worldLogical);
   }
 
   G4Box* lysoSolid =

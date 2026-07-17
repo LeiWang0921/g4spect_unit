@@ -32,6 +32,18 @@ class DetectorGeometryConfigTest(unittest.TestCase):
             if cls.dicom_source_path.exists()
             else ""
         )
+        cls.human_header_path = REPO / "include" / "SpectMirdHumanPhantom.hh"
+        cls.human_source_path = REPO / "src" / "SpectMirdHumanPhantom.cc"
+        cls.human_header = (
+            cls.human_header_path.read_text(encoding="utf-8")
+            if cls.human_header_path.exists()
+            else ""
+        )
+        cls.human_source = (
+            cls.human_source_path.read_text(encoding="utf-8")
+            if cls.human_source_path.exists()
+            else ""
+        )
         cls.macros = {
             path.name: path.read_text(encoding="utf-8")
             for path in (REPO / "mac").glob("*.mac")
@@ -183,6 +195,45 @@ class DetectorGeometryConfigTest(unittest.TestCase):
         self.assertIn("G4SPECT_SHOW_DICOM_VOXELS=1", self.running)
         self.assertIn("DICOM_PhantomPreview", self.running)
         self.assertIn("DICOM_PhantomContainer", self.running)
+
+    def test_mird_human_phantom_is_optional_outer_geometry_not_sensitive_output(self):
+        self.assertTrue(self.human_header_path.exists())
+        self.assertTrue(self.human_source_path.exists())
+        self.assertIn("SpectMirdHumanPhantom.cc", self.cmake)
+        self.assertIn("#include \"SpectMirdHumanPhantom.hh\"", self.detector)
+        self.assertIn(
+            "SpectDetectorConstruction(G4bool enableDicomPhantom = false, G4bool enableHumanPhantom = false)",
+            self.header,
+        )
+        self.assertIn("fEnableHumanPhantom", self.header)
+        self.assertIn("fEnableHumanPhantom", self.detector)
+        self.assertIn("SpectMirdHumanPhantom humanPhantom", self.detector)
+        self.assertIn("humanPhantom.Construct", self.detector)
+        self.assertIn("--human-phantom", self.main)
+        self.assertIn("G4SPECT_ENABLE_HUMAN_PHANTOM", self.main)
+        self.assertIn("Cannot enable both --dicom-phantom and --human-phantom", self.main)
+
+        self.assertIn("G4EllipticalTube", self.human_source)
+        self.assertIn("G4Ellipsoid", self.human_source)
+        self.assertIn("HumanPhantom_Trunk_phys", self.human_source)
+        self.assertIn("HumanPhantom_Head_phys", self.human_source)
+        self.assertIn("HumanPhantom_LeftArm_phys", self.human_source)
+        self.assertIn("HumanPhantom_RightArm_phys", self.human_source)
+        self.assertIn("HumanPhantom_LeftLeg_phys", self.human_source)
+        self.assertIn("HumanPhantom_RightLeg_phys", self.human_source)
+        self.assertIn("G4_TISSUE_SOFT_ICRP", self.human_source)
+        self.assertIn("G4_WATER", self.human_source)
+        self.assertNotIn("SetSensitiveDetector", self.human_source)
+        self.assertNotIn("G4PSDoseDeposit", self.human_source)
+
+    def test_mird_human_phantom_run_docs_explain_showallbeam_iso_preview(self):
+        self.assertIn("--human-phantom", self.running)
+        self.assertIn("G4SPECT_ENABLE_HUMAN_PHANTOM", self.running)
+        self.assertIn("MIRD", self.running)
+        self.assertIn("ShowAllBeam", self.running)
+        self.assertIn("/gps/ang/type iso", self.running)
+        self.assertIn("tree_chroma", self.running)
+        self.assertIn("LYSO", self.running)
 
 
 if __name__ == "__main__":

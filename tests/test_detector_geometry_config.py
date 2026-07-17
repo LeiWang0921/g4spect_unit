@@ -181,6 +181,8 @@ class DetectorGeometryConfigTest(unittest.TestCase):
         self.assertIn("voxelVis->SetForceSolid(showDicomVoxels)", self.dicom_source)
         self.assertIn("默认不显示每个 DICOM voxel", self.running)
         self.assertIn("G4SPECT_SHOW_DICOM_VOXELS=1", self.running)
+        self.assertIn("DICOM_PhantomPreview", self.running)
+        self.assertIn("DICOM_PhantomContainer", self.running)
 
 
 if __name__ == "__main__":

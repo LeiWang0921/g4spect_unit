@@ -445,6 +445,89 @@ Shape {
         self.assertIn('material.blend_method = "BLEND"', script_text)
         self.assertIn("configure_material_transparency()", script_text)
 
+    def test_adds_coarse_dicom_preview_mesh_without_many_voxel_objects(self):
+        converter = load_converter()
+        sample_vrml = """#VRML V2.0 utf8
+#---------- SOLID: DICOM_PhantomContainer_phys.0
+Shape {
+  appearance Appearance {
+    material Material {
+      diffuseColor 0.75 0.55 0.35
+      transparency 0.88
+    }
+  }
+  geometry IndexedFaceSet {
+    coord Coordinate {
+      point [
+        -2 -2 -0.5,
+        2 -2 -0.5,
+        2 2 -0.5,
+        -2 2 -0.5,
+      ]
+    }
+    coordIndex [
+      0, 1, 2, 3, -1,
+    ]
+  }
+}
+"""
+
+        sample_g4dcm = """2
+0 Air
+1 Water
+4 4 1
+-2 2
+-2 2
+0 1
+0 0 0 0
+0 1 1 0
+0 1 1 0
+0 0 0 0
+"""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            dicom_dir = tmp_path / "dicom"
+            dicom_dir.mkdir()
+            (dicom_dir / "1.g4dcm").write_text(sample_g4dcm, encoding="utf-8")
+            src = tmp_path / "dicom_preview.wrl"
+            obj = tmp_path / "dicom_preview.obj"
+            src.write_text(sample_vrml, encoding="utf-8")
+
+            old_path = os.environ.get("G4SPECT_DICOM_PATH")
+            old_files = os.environ.get("G4SPECT_DICOM_FILES")
+            old_stride = os.environ.get("G4SPECT_DICOM_PREVIEW_STRIDE")
+            try:
+                os.environ["G4SPECT_DICOM_PATH"] = str(dicom_dir)
+                os.environ["G4SPECT_DICOM_FILES"] = "1.g4dcm"
+                os.environ["G4SPECT_DICOM_PREVIEW_STRIDE"] = "2"
+                exit_code = converter.main(
+                    [str(src), str(obj)], default_copy_target=None
+                )
+            finally:
+                for key, value in {
+                    "G4SPECT_DICOM_PATH": old_path,
+                    "G4SPECT_DICOM_FILES": old_files,
+                    "G4SPECT_DICOM_PREVIEW_STRIDE": old_stride,
+                }.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+
+            obj_text = obj.read_text(encoding="utf-8")
+            mtl_text = obj.with_suffix(".mtl").read_text(encoding="utf-8")
+            script_text = obj.with_name("import_tracks_blender.py").read_text(
+                encoding="utf-8"
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("o DICOM_PhantomPreview", obj_text)
+        self.assertNotIn("o DICOM_PhantomContainer", obj_text)
+        self.assertEqual(obj_text.count("\no "), 1)
+        self.assertIn("newmtl DICOM_PhantomPreview", mtl_text)
+        self.assertIn('"DICOM_PhantomPreview"', script_text)
+
     def test_default_line_tube_radius_is_thin(self):
         converter = load_converter()
 

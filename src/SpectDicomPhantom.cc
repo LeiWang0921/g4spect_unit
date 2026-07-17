@@ -43,6 +43,16 @@ void Fail(const G4String& message)
   G4Exception("SpectDicomPhantom", "G4SPECT_DICOM", FatalException, message);
 }
 
+G4bool EnvFlagEnabled(const char* name)
+{
+  const char* value = std::getenv(name);
+  if (!value || value[0] == '\0') {
+    return false;
+  }
+  G4String text(value);
+  return text != "0" && text != "false" && text != "FALSE";
+}
+
 G4String JoinPath(const G4String& directory, const G4String& file)
 {
   if (directory.empty()) {
@@ -296,7 +306,8 @@ void SpectDicomPhantom::Construct(G4LogicalVolume* worldLogical)
 
   G4VisAttributes* voxelVis =
     new G4VisAttributes(G4Colour(0.85, 0.65, 0.45, 0.18));
-  voxelVis->SetVisibility(true);
-  voxelVis->SetForceSolid(true);
+  const G4bool showDicomVoxels = EnvFlagEnabled("G4SPECT_SHOW_DICOM_VOXELS");
+  voxelVis->SetVisibility(showDicomVoxels);
+  voxelVis->SetForceSolid(showDicomVoxels);
   voxelLogical->SetVisAttributes(voxelVis);
 }

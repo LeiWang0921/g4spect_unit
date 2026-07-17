@@ -93,6 +93,8 @@ G4SPECT_ENABLE_COLLIMATOR=1 ./G4SPECT ../mac/tc99m_beam_smoke.mac
 - 覆盖数据目录：`G4SPECT_DICOM_PATH=/path/to/g4dcm_dir`
 - 覆盖切片列表：`G4SPECT_DICOM_FILES=1.g4dcm,2.g4dcm,3.g4dcm`
 - 默认放置：phantom 的几何中心放在源点 `(0, 0, 0 mm)` 附近，让源在人体材料中发射
+- 默认可视化：默认不显示每个 DICOM voxel，只显示半透明 phantom 容器，以免 VRML/OBJ 导出成数万个 Blender 对象导致卡死
+- 显示每个 voxel：仅在确实需要检查 voxel 细节时使用 `G4SPECT_SHOW_DICOM_VOXELS=1`
 - 输出：人体 phantom 只作为 attenuation/scatter geometry 参与 tracking，不是 sensitive detector；ROOT 输出仍然只记录 LYSO 中的 `tree_chroma` hit/step 信息
 
 当前默认 DICOM 数据来自 Geant4 example，适合验证链路和材料/voxel geometry，不等价于完整临床人体 CT。以后如果有真实 CT 或数字人体 CT，应通过 `G4SPECT_DICOM_PATH` 和 `G4SPECT_DICOM_FILES` 替换默认切片。
@@ -187,6 +189,10 @@ G4VRMLFILE_MAX_FILE_NUM=1 G4SPECT_DETECTOR_DISTANCE_MM=300 \
 # 加入人体 phantom，同时恢复准直器
 G4VRMLFILE_MAX_FILE_NUM=1 G4SPECT_ENABLE_COLLIMATOR=1 \
   ./G4SPECT --dicom-phantom ../mac/export_geometry_tracks_ShowAllBeam.mac
+
+# 只在调试 voxel 细节时使用；这会导出大量 voxel 对象，Blender 可能很慢
+G4VRMLFILE_MAX_FILE_NUM=1 G4SPECT_SHOW_DICOM_VOXELS=1 \
+  ./G4SPECT --dicom-phantom ../mac/export_geometry_tracks_ShowAllBeam.mac
 ```
 
 等价地，也可以用环境变量启用人体 phantom：
@@ -240,6 +246,8 @@ python3 ../tools/vrml_to_obj.py
 `build/g4_00.wrl`，复制成 `geometry_exports/spect_geometry_tracks.wrl`，
 并生成同名的 `.obj/.mtl`。如果 `build/g4_00.wrl` 不存在，脚本才会回退到
 `build/` 目录中最新的 `*.wrl`。随后脚本会自动把 3D 文件和 Blender 导入脚本复制到内置的本地目标目录。
+
+如果 Blender 导入时卡死，优先检查是否用 `G4SPECT_SHOW_DICOM_VOXELS=1` 导出了每个 voxel。默认不要打开这个环境变量；完整 voxel phantom 仍然参与 Geant4 tracking，只是不逐个 voxel 写入 VRML/OBJ 可视化文件。
 
 如果之后还要运行 `ShowDetectedBeam`，但想保留 `ShowAllBeam` 的结果，先在服务器上改名保存：
 
@@ -570,7 +578,7 @@ mkdir -p ../output
 
 - `src/SpectDicomPhantom.cc`
 
-  实现 DICOM/CT voxel phantom adapter。默认读取 `/opt/geant4_10.5/examples/extended/medical/DICOM` 下的 `1.g4dcm,2.g4dcm,3.g4dcm`，也可以用 `G4SPECT_DICOM_PATH` 和 `G4SPECT_DICOM_FILES` 覆盖。它用 `G4PhantomParameterisation` 和 `G4PVParameterised` 建立 voxel material geometry，只参与 tracking 中的 attenuation/scatter，不作为 sensitive detector。
+  实现 DICOM/CT voxel phantom adapter。默认读取 `/opt/geant4_10.5/examples/extended/medical/DICOM` 下的 `1.g4dcm,2.g4dcm,3.g4dcm`，也可以用 `G4SPECT_DICOM_PATH` 和 `G4SPECT_DICOM_FILES` 覆盖。它用 `G4PhantomParameterisation` 和 `G4PVParameterised` 建立 voxel material geometry，只参与 tracking 中的 attenuation/scatter，不作为 sensitive detector。为了保持 Blender 可用，默认只显示半透明 phantom 容器；只有设置 `G4SPECT_SHOW_DICOM_VOXELS=1` 时才逐个显示 voxel。
 
 - `src/SpectEventAction.cc`
 

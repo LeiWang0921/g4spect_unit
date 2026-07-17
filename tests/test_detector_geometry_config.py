@@ -174,6 +174,14 @@ class DetectorGeometryConfigTest(unittest.TestCase):
         self.assertIn("G4SPECT_ENABLE_COLLIMATOR", self.running)
         self.assertIn("默认不构建准直器", self.running)
 
+    def test_dicom_voxel_visualization_is_opt_in_to_keep_blender_responsive(self):
+        self.assertIn("G4SPECT_SHOW_DICOM_VOXELS", self.dicom_source)
+        self.assertIn("showDicomVoxels", self.dicom_source)
+        self.assertIn("voxelVis->SetVisibility(showDicomVoxels)", self.dicom_source)
+        self.assertIn("voxelVis->SetForceSolid(showDicomVoxels)", self.dicom_source)
+        self.assertIn("默认不显示每个 DICOM voxel", self.running)
+        self.assertIn("G4SPECT_SHOW_DICOM_VOXELS=1", self.running)
+
 
 if __name__ == "__main__":
     unittest.main()

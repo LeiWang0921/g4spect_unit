@@ -448,7 +448,7 @@ Shape {
     def test_default_line_tube_radius_is_thin(self):
         converter = load_converter()
 
-        self.assertEqual(converter.LINE_TUBE_RADIUS, 0.03)
+        self.assertEqual(converter.LINE_TUBE_RADIUS, 0.005)
 
     def test_default_copy_target_uses_local_visualization_directory(self):
         converter = load_converter()

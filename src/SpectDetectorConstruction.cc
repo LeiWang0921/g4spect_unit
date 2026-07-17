@@ -1,4 +1,5 @@
 #include "SpectDetectorConstruction.hh"
+#include "SpectDicomPhantom.hh"
 #include "SpectSensitiveDetector.hh"
 
 #include "G4Box.hh"
@@ -12,9 +13,46 @@
 #include "G4ThreeVector.hh"
 #include "G4VisAttributes.hh"
 
-SpectDetectorConstruction::SpectDetectorConstruction()
+#include <algorithm>
+#include <cstdlib>
+#include <sstream>
+
+namespace
+{
+G4bool EnvFlagEnabled(const char* name)
+{
+  const char* value = std::getenv(name);
+  if (!value || value[0] == '\0') {
+    return false;
+  }
+  G4String text(value);
+  return text != "0" && text != "false" && text != "FALSE";
+}
+
+G4bool CollimatorEnabled()
+{
+  return EnvFlagEnabled("G4SPECT_ENABLE_COLLIMATOR");
+}
+
+G4double DetectorFrontDistance()
+{
+  const char* value = std::getenv("G4SPECT_DETECTOR_DISTANCE_MM");
+  if (value && value[0] != '\0') {
+    std::istringstream stream(value);
+    G4double distanceMm = 0.0;
+    stream >> distanceMm;
+    if (stream && distanceMm > 0.0) {
+      return distanceMm * mm;
+    }
+  }
+  return 1000.0 * mm;
+}
+}
+
+SpectDetectorConstruction::SpectDetectorConstruction(G4bool enableDicomPhantom)
   : G4VUserDetectorConstruction(),
     fLYSOLogical(0),
+    fEnableDicomPhantom(enableDicomPhantom),
     fWorldMaterial(0),
     fLeadMaterial(0),
     fLYSOMaterial(0),
@@ -73,23 +111,47 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
 {
   DefineMaterials();
 
-  G4Box* worldSolid = new G4Box("world", 200*mm, 200*mm, 200*mm);
+  const G4double detectorXY = 64.0*mm;
+  const G4double collimatorXY = 64.0*mm;
+  const G4double collimatorLength = 35.0*mm;
+  const G4double lysoThickness = 10.0*mm;
+  const G4double gelThickness = 0.5*mm;
+  const G4double sipmThickness = 1.0*mm;
+  const G4double detectorFrontZ = DetectorFrontDistance();
+  const G4bool enableCollimator = CollimatorEnabled();
+  const G4double detectorStackFrontOffset =
+    enableCollimator ? collimatorLength : 0.0*mm;
+  const G4double collimatorCenterZ = detectorFrontZ + collimatorLength/2.0;
+  const G4double lysoCenterZ =
+    detectorFrontZ + detectorStackFrontOffset + lysoThickness/2.0;
+  const G4double gelCenterZ =
+    detectorFrontZ + detectorStackFrontOffset + lysoThickness + gelThickness/2.0;
+  const G4double sipmCenterZ =
+    detectorFrontZ + detectorStackFrontOffset + lysoThickness + gelThickness
+    + sipmThickness/2.0;
+  const G4double detectorBackZ =
+    detectorFrontZ + detectorStackFrontOffset + lysoThickness + gelThickness
+    + sipmThickness;
+  const G4double worldHalfLength = std::max(500.0*mm, detectorBackZ + 100.0*mm);
+
+  G4Box* worldSolid =
+    new G4Box("world", worldHalfLength, worldHalfLength, worldHalfLength);
   G4LogicalVolume* worldLogical =
     new G4LogicalVolume(worldSolid, fWorldMaterial, "world_log");
   G4VPhysicalVolume* worldPhysical =
     new G4PVPlacement(0, G4ThreeVector(), "world_phys", worldLogical, 0, false, 0);
 
-  const G4double detectorXY = 64.0*mm;
-  const G4double lysoThickness = 10.0*mm;
-  const G4double lysoCenterZ = 140.0*mm;
+  if (fEnableDicomPhantom) {
+    SpectDicomPhantom dicomPhantom;
+    dicomPhantom.Construct(worldLogical);
+  }
+
   G4Box* lysoSolid =
     new G4Box("LYSO_solid", detectorXY/2.0, detectorXY/2.0, lysoThickness/2.0);
   fLYSOLogical = new G4LogicalVolume(lysoSolid, fLYSOMaterial, "LYSO_log");
   new G4PVPlacement(0, G4ThreeVector(0, 0, lysoCenterZ), "LYSO_phys",
                     fLYSOLogical, worldPhysical, false, 0);
 
-  const G4double gelThickness = 0.5*mm;
-  const G4double gelCenterZ = 145.25*mm;
   G4Box* gelSolid =
     new G4Box("OpticalGel_solid", detectorXY/2.0, detectorXY/2.0, gelThickness/2.0);
   G4LogicalVolume* gelLogical =
@@ -97,8 +159,6 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   new G4PVPlacement(0, G4ThreeVector(0, 0, gelCenterZ), "OpticalGel_phys",
                     gelLogical, worldPhysical, false, 0);
 
-  const G4double sipmThickness = 1.0*mm;
-  const G4double sipmCenterZ = 146.0*mm;
   G4Box* sipmSolid =
     new G4Box("SiPM_solid", detectorXY/2.0, detectorXY/2.0, sipmThickness/2.0);
   G4LogicalVolume* sipmLogical =
@@ -106,9 +166,12 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   new G4PVPlacement(0, G4ThreeVector(0, 0, sipmCenterZ), "SiPM_phys",
                     sipmLogical, worldPhysical, false, 0);
 
-  const G4double collimatorXY = 64.0*mm;
-  const G4double collimatorLength = 35.0*mm;
-  const G4double collimatorCenterZ = 117.5*mm;
+  worldLogical->SetVisAttributes(G4VisAttributes::Invisible);
+  fLYSOLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.0, 0.7, 1.0, 0.4)));
+  gelLogical->SetVisAttributes(new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.3)));
+  sipmLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.1, 0.1, 0.1)));
+
+  if (enableCollimator) {
   const G4double holeSize = 1.5*mm;
   const G4double septumThickness = 0.2*mm;
   const G4int halfGrid = 18;
@@ -208,10 +271,6 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
     }
   }
 
-  worldLogical->SetVisAttributes(G4VisAttributes::Invisible);
-  fLYSOLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.0, 0.7, 1.0, 0.4)));
-  gelLogical->SetVisAttributes(new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.3)));
-  sipmLogical->SetVisAttributes(new G4VisAttributes(G4Colour(0.1, 0.1, 0.1)));
   collimatorLogical->SetVisAttributes(G4VisAttributes::Invisible);
   G4VisAttributes* leadVis = new G4VisAttributes(G4Colour(0.45, 0.45, 0.45));
   borderSideLogical->SetVisAttributes(leadVis);
@@ -220,6 +279,7 @@ G4VPhysicalVolume* SpectDetectorConstruction::Construct()
   innerVerticalSeptumLogical->SetVisAttributes(leadVis);
   outerHorizontalSeptumLogical->SetVisAttributes(leadVis);
   innerHorizontalSeptumLogical->SetVisAttributes(leadVis);
+  }
 
   return worldPhysical;
 }

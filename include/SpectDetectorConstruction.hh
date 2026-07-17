@@ -2,6 +2,7 @@
 #define SpectDetectorConstruction_h 1
 
 #include "G4VUserDetectorConstruction.hh"
+#include "globals.hh"
 
 class G4LogicalVolume;
 class G4Material;
@@ -10,7 +11,7 @@ class G4VPhysicalVolume;
 class SpectDetectorConstruction : public G4VUserDetectorConstruction
 {
 public:
-  SpectDetectorConstruction();
+  SpectDetectorConstruction(G4bool enableDicomPhantom = false);
   virtual ~SpectDetectorConstruction();
 
   virtual G4VPhysicalVolume* Construct();
@@ -22,6 +23,7 @@ private:
   G4Material* BuildOpticalGel();
 
   G4LogicalVolume* fLYSOLogical;
+  G4bool fEnableDicomPhantom;
   G4Material* fWorldMaterial;
   G4Material* fLeadMaterial;
   G4Material* fLYSOMaterial;
